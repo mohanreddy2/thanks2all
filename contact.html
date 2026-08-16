@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Write to me — thanks2all.org</title>
+  <meta name="description" content="Send a note to Mohan Reddy Yadamuri at thanks2all.org.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html">
+        <img class="logo-mark" src="favicon.svg" alt="">
+        <span class="logo-word">thanks2all</span>
+      </a>
+      <button class="menu-btn" type="button" data-menu aria-label="Open menu">☰</button>
+      <nav class="nav" data-nav>
+        <a href="index.html">My journey</a>
+        <a href="diary.html">Diary</a>
+        <a href="path.html">Path</a>
+        <a class="active" href="contact.html">Write to me</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="section grid-2">
+      <div>
+        <p class="eyebrow">Hello</p>
+        <h1>If you were part of this path, write to me.</h1>
+        <p class="lead">Teachers, classmates, colleagues, and friends — I would like to hear from you. I read mail at mohan.reddy02@gmail.com.</p>
+        <div class="card" style="margin-top: 24px;">
+          <p><strong>Email</strong><br><a href="mailto:mohan.reddy02@gmail.com">mohan.reddy02@gmail.com</a></p>
+          <p><strong>WhatsApp</strong><br><a href="https://wa.me/6590628025">+65 9062 8025</a></p>
+          <p><strong>Now</strong><br>Singapore</p>
+        </div>
+      </div>
+      <form class="card" data-form action="https://formsubmit.co/mohan.reddy02@gmail.com" method="POST">
+        <input type="hidden" name="_subject" value="Note from thanks2all.org">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_next" value="https://thanks2all.org/thanks.html">
+        <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="honey">
+        <label for="name">Your name</label>
+        <input id="name" name="name" required>
+        <label for="email">Your email</label>
+        <input id="email" name="email" type="email" required>
+        <label for="message">How we met, or what you want to say</label>
+        <textarea id="message" name="message" rows="6" required></textarea>
+        <button class="btn btn-primary" type="submit">Send note</button>
+        <p class="form-note">Goes to mohan.reddy02@gmail.com.</p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <p>© Mohan Reddy Yadamuri · thanks2all.org</p>
+    </div>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>
