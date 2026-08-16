@@ -1,0 +1,79 @@
+backend:
+  name: github
+  repo: mohanreddy2/oraganic-websites
+  branch: main
+site_url: https://thanks2all.org
+display_url: https://thanks2all.org
+logo_url: /favicon.svg
+media_folder: media
+public_folder: /media
+locale: en
+
+collections:
+  - name: thanks2all
+    label: thanks2all.org
+    files:
+      - name: home
+        label: Home and Google Sheet
+        file: thanks2all.org/content.json
+        fields:
+          - { label: Hero title, name: hero_title, widget: string }
+          - { label: Hero lead, name: hero_lead, widget: text }
+          - { label: Story, name: story, widget: text, hint: "Separate paragraphs with a blank line" }
+          - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false, hint: "Publish the Sheet as CSV and paste the link" }
+          - { label: Google Form embed URL, name: formEmbed, widget: string, required: false }
+      - name: diary
+        label: Diary notes
+        file: thanks2all.org/data/diary.json
+        fields:
+          - label: Entries
+            name: entries
+            widget: list
+            fields:
+              - { label: Date, name: date, widget: string }
+              - { label: Title, name: title, widget: string }
+              - { label: Note, name: note, widget: text }
+
+  - name: dailycart
+    label: dailycart24x7.com
+    files:
+      - name: home
+        label: Home
+        file: dailycart24x7.com/content.json
+        fields:
+          - { label: Hero title, name: hero_title, widget: string }
+          - { label: Hero lead, name: hero_lead, widget: text }
+          - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+
+  - name: idailycart
+    label: idailycart.com
+    files:
+      - name: home
+        label: Home
+        file: idailycart.com/content.json
+        fields:
+          - { label: Hero title, name: hero_title, widget: string }
+          - { label: Hero lead, name: hero_lead, widget: text }
+          - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+
+  - name: oraganic
+    label: oraganic.online
+    files:
+      - name: home
+        label: Home
+        file: oraganic.online/content.json
+        fields:
+          - { label: Hero title, name: hero_title, widget: string }
+          - { label: Hero lead, name: hero_lead, widget: text }
+          - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+
+  - name: oraganic_ai
+    label: oraganic-ai.com
+    files:
+      - name: home
+        label: Home
+        file: oraganic-ai.com/content.json
+        fields:
+          - { label: Hero title, name: hero_title, widget: string }
+          - { label: Hero lead, name: hero_lead, widget: text }
+          - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }

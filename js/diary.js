@@ -56,7 +56,8 @@ function renderEntries(entries, mount) {
 async function loadSeed() {
   const response = await fetch("data/diary.json");
   if (!response.ok) return [];
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.entries || [];
 }
 
 async function loadSheet(url) {
@@ -79,7 +80,13 @@ async function loadSheet(url) {
   const mount = document.querySelector("[data-diary]");
   const formFrame = document.querySelector("[data-form-embed]");
   if (!mount) return;
-  const config = window.THANKS_DIARY || {};
+  let config = window.THANKS_DIARY || {};
+  try {
+    const live = await (await fetch("content.json", { cache: "no-store" })).json();
+    config = { ...config, ...live };
+  } catch (error) {
+    config = window.THANKS_DIARY || {};
+  }
   if (formFrame && config.formEmbed) {
     formFrame.src = config.formEmbed;
     formFrame.hidden = false;
