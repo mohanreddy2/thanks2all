@@ -1,5 +1,5 @@
 (async function applyLiveContent() {
-  const nodes = document.querySelectorAll("[data-content], [data-content-html]");
+  const nodes = document.querySelectorAll("[data-content], [data-content-html], [data-href], [data-src]");
   if (!nodes.length) return;
   try {
     const response = await fetch("content.json", { cache: "no-store" });
@@ -15,11 +15,25 @@
       }
     }
     const content = { ...data, ...sheet };
+    if (content.support_email) {
+      content.support_email_mailto = "mailto:" + String(content.support_email).replace(/^mailto:/, "");
+    }
     nodes.forEach((node) => {
+      const hrefKey = node.getAttribute("data-href");
+      const srcKey = node.getAttribute("data-src");
       const htmlKey = node.getAttribute("data-content-html");
-      const key = htmlKey || node.getAttribute("data-content");
+      const key = hrefKey || srcKey || htmlKey || node.getAttribute("data-content");
       const value = content[key];
       if (value == null || value === "") return;
+      if (hrefKey) {
+        node.setAttribute("href", value);
+        if (node.matches("a[data-content]")) node.textContent = value.replace(/^mailto:/, "");
+        return;
+      }
+      if (srcKey) {
+        node.setAttribute("src", value);
+        return;
+      }
       if (htmlKey) {
         node.innerHTML = String(value)
           .split(/\n{2,}/)

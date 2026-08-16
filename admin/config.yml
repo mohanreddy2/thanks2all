@@ -38,12 +38,17 @@ collections:
     label: dailycart24x7.com
     files:
       - name: home
-        label: Home
+        label: Home and social feeds
         file: dailycart24x7.com/content.json
         fields:
           - { label: Hero title, name: hero_title, widget: string }
           - { label: Hero lead, name: hero_lead, widget: text }
           - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+          - { label: Support email, name: support_email, widget: string }
+          - { label: YouTube, name: youtube, widget: string }
+          - { label: Facebook, name: facebook, widget: string }
+          - { label: Instagram, name: instagram, widget: string }
+          - { label: X, name: x, widget: string }
 
   - name: idailycart
     label: idailycart.com
@@ -55,6 +60,11 @@ collections:
           - { label: Hero title, name: hero_title, widget: string }
           - { label: Hero lead, name: hero_lead, widget: text }
           - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+          - { label: Support email, name: support_email, widget: string }
+          - { label: YouTube, name: youtube, widget: string }
+          - { label: Facebook, name: facebook, widget: string }
+          - { label: Instagram, name: instagram, widget: string }
+          - { label: X, name: x, widget: string }
 
   - name: oraganic
     label: oraganic.online
@@ -66,6 +76,11 @@ collections:
           - { label: Hero title, name: hero_title, widget: string }
           - { label: Hero lead, name: hero_lead, widget: text }
           - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+          - { label: Support email, name: support_email, widget: string }
+          - { label: YouTube, name: youtube, widget: string }
+          - { label: Facebook, name: facebook, widget: string }
+          - { label: Instagram, name: instagram, widget: string }
+          - { label: X, name: x, widget: string }
 
   - name: oraganic_ai
     label: oraganic-ai.com
@@ -77,3 +92,8 @@ collections:
           - { label: Hero title, name: hero_title, widget: string }
           - { label: Hero lead, name: hero_lead, widget: text }
           - { label: Google Sheet CSV URL, name: sheetCsv, widget: string, required: false }
+          - { label: Support email, name: support_email, widget: string }
+          - { label: YouTube, name: youtube, widget: string }
+          - { label: Facebook, name: facebook, widget: string }
+          - { label: Instagram, name: instagram, widget: string }
+          - { label: X, name: x, widget: string }
