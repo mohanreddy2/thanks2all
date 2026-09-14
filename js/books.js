@@ -129,7 +129,7 @@
     try {
       const res = await fetch(`${KHATA_API}/${path}`, {
         method: body ? "POST" : "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: body ? { "Content-Type": "application/json" } : {},
         body: body ? JSON.stringify(body) : undefined,
         signal: ctrl.signal
       });
@@ -241,6 +241,12 @@
     }
     if (h === "person-new") {
       state.view = "person-new";
+      state.personId = null;
+      return;
+    }
+    if (h.startsWith("person-edit/")) {
+      state.view = "person-edit";
+      state.personId = h.slice("person-edit/".length);
       return;
     }
     if (h === "settings") {
@@ -304,7 +310,7 @@
       <section class="page-head">
         <p class="eyebrow">Private ledger</p>
         <h1>Accounts with me</h1>
-        <p class="lead">Unlock with your PIN from any device. Add a person, save credit you gave or credit they gave you. The balance sheet stays online.</p>
+        <p class="lead">Unlock with your PIN from any device. Add or edit a person, then save or change any credit. Every save publishes the same balance sheet online.</p>
         ${noticeHtml()}
       </section>
       <div class="books-stats">
@@ -355,7 +361,7 @@
             <h2>${esc(p.name)}</h2>
             ${formatBals(balancesFor(p.id))}
             ${p.notes ? `<p class="muted">${esc(p.notes)}</p>` : ""}
-            <p class="muted">${state.data.txns.filter((t) => t.personId === p.id).length} ledger line(s)</p>
+            <p class="muted">${state.data.txns.filter((t) => t.personId === p.id).length} ledger line(s) · tap to open, edit any time</p>
           </a>`).join("") : `<p class="muted">Add the first person, then save credits as they happen.</p>`}
       </div>`;
   }
@@ -439,6 +445,9 @@
         <h1>${esc(p.name)}</h1>
         ${p.notes ? `<p class="lead">${esc(p.notes)}</p>` : ""}
         ${noticeHtml()}
+        <div class="toolbar">
+          <a class="btn btn-ghost" href="#person-edit/${esc(p.id)}">Edit person</a>
+        </div>
       </section>
       ${sheetCards(p.id)}
       ${txnForm(null, p.id)}
@@ -504,6 +513,20 @@
       ${txnForm(t, t.personId)}`;
   }
 
+  function personForm(person) {
+    const p = person || { id: "", name: "", notes: "" };
+    return `
+      <form class="books-panel" data-person="${esc(p.id)}">
+        <label>Name<input name="name" required placeholder="New person" value="${esc(p.name)}"></label>
+        <label>Notes<input name="notes" placeholder="Optional" value="${esc(p.notes)}"></label>
+        <p class="form-note warn">${esc(state.error)}</p>
+        <div class="toolbar">
+          <button class="btn btn-primary" type="submit">${p.id ? "Save person" : "Add person"}</button>
+          ${p.id ? `<button class="btn danger" type="button" data-delete-person="${esc(p.id)}">Delete person</button>` : ""}
+        </div>
+      </form>`;
+  }
+
   function renderPersonNew() {
     app.innerHTML = `
       <section class="page-head">
@@ -511,11 +534,23 @@
         <h1>Add person</h1>
         <p class="lead">Anyone you give credit to, or who gives you credit. Their ledger starts at zero and grows as you save lines.</p>
       </section>
-      <form class="books-panel" data-person>
-        <label>Name<input name="name" required placeholder="New person"></label>
-        <label>Notes<input name="notes" placeholder="Optional"></label>
-        <button class="btn btn-primary" type="submit">Save person</button>
-      </form>`;
+      ${personForm(null)}`;
+  }
+
+  function renderPersonEdit() {
+    const p = personById(state.personId);
+    if (!p) {
+      app.innerHTML = `<p>Person not found. <a class="back" href="#">Back</a></p>`;
+      return;
+    }
+    app.innerHTML = `
+      <section class="page-head">
+        <p><a class="back" href="#p/${esc(p.id)}">← ${esc(p.name)}</a></p>
+        <h1>Edit person</h1>
+        <p class="lead">Change the name or notes any time. The running ledger stays with them. Save publishes the same books on every device.</p>
+        ${noticeHtml()}
+      </section>
+      ${personForm(p)}`;
   }
 
   function renderSettings() {
@@ -558,6 +593,7 @@
     else if (state.view === "new") renderNew();
     else if (state.view === "edit") renderEdit();
     else if (state.view === "person-new") renderPersonNew();
+    else if (state.view === "person-edit") renderPersonEdit();
     else if (state.view === "settings") renderSettings();
     else renderHome();
   }
@@ -648,14 +684,20 @@
 
   async function boot() {
     renderLock();
+    const slow = setTimeout(() => {
+      if (!state.cloudReady) {
+        state.cloudReady = true;
+        if (localStorage.getItem(LS_SALT) && localStorage.getItem(LS_VAULT)) render();
+      }
+    }, 2000);
     try {
       const st = await khata("status");
       state.cloudClaimed = Boolean(st.claimed);
       state.cloudOk = true;
     } catch {
       state.cloudOk = false;
-      state.cloudClaimed = false;
     }
+    clearTimeout(slow);
     state.cloudReady = true;
     render();
   }
@@ -688,10 +730,21 @@
       const fd = new FormData(personForm);
       const name = String(fd.get("name") || "").trim();
       if (!name) return;
-      const person = { id: uid(), name, notes: String(fd.get("notes") || "").trim() };
-      state.data.people.push(person);
-      await save(`${name} saved. You can now record credits with them.`);
-      location.hash = `#p/${person.id}`;
+      const notes = String(fd.get("notes") || "").trim();
+      const existingId = personForm.getAttribute("data-person");
+      if (existingId) {
+        const person = personById(existingId);
+        if (!person) return;
+        person.name = name;
+        person.notes = notes;
+        await save(`${name} updated. Same books on every device.`);
+        location.hash = `#p/${person.id}`;
+      } else {
+        const person = { id: uid(), name, notes };
+        state.data.people.push(person);
+        await save(`${name} saved. You can now record credits with them.`);
+        location.hash = `#p/${person.id}`;
+      }
       render();
       return;
     }
@@ -766,6 +819,24 @@
     const editTxn = e.target.closest("[data-edit-txn]");
     if (editTxn) {
       location.hash = `#edit/${editTxn.getAttribute("data-edit-txn")}`;
+      return;
+    }
+    const delPerson = e.target.closest("[data-delete-person]");
+    if (delPerson) {
+      const id = delPerson.getAttribute("data-delete-person");
+      const person = personById(id);
+      const lines = state.data.txns.filter((t) => t.personId === id).length;
+      const ok = confirm(
+        lines
+          ? `Delete ${person?.name || "this person"} and ${lines} ledger line(s)? This publishes to every device.`
+          : `Delete ${person?.name || "this person"}? This publishes to every device.`
+      );
+      if (!ok) return;
+      state.data.people = state.data.people.filter((p) => p.id !== id);
+      state.data.txns = state.data.txns.filter((t) => t.personId !== id);
+      await save(`${person?.name || "Person"} removed. Balance sheet updated.`);
+      location.hash = "";
+      render();
       return;
     }
     const del = e.target.closest("[data-delete-txn]");
