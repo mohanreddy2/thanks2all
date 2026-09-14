@@ -206,7 +206,7 @@
               <strong>${esc(money(Math.abs(n), cur))}</strong>
               <span>${n >= 0 ? "net you sent" : "net toward you"} · ${esc(cur)}</span>
             </div>`).join("")
-          : `<div class="books-stat"><strong>0 people</strong><span>Import your Excel file or add a person</span></div>`}
+          : `<div class="books-stat"><strong>${people.length} ${people.length === 1 ? "person" : "people"}</strong><span>${people.length ? "No counted entries yet" : "Import your Excel file or add a person"}</span></div>`}
       </div>
       <div class="toolbar">
         <a class="btn btn-primary" href="#person-new">Add person</a>
