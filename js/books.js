@@ -456,11 +456,18 @@
         ${noticeHtml()}
         <div class="toolbar">
           <a class="btn btn-ghost" href="#person-edit/${esc(p.id)}">Edit person</a>
-          <button class="btn btn-primary" type="button" data-share-wa="${esc(p.id)}">Share on WhatsApp</button>
         </div>
-        ${p.shareLink && isShortShareUrl(p.shareLink) ? `<p class="muted">Page: <a href="${esc(p.shareLink)}">${esc(p.shareLink)}</a></p>` : ""}
       </section>
       ${sheetCards(p.id)}
+      <div class="books-panel share-box">
+        <h2>Share with ${esc(p.name)}</h2>
+        <p class="muted">WhatsApp gets only these transactions — no extra links.</p>
+        <pre class="share-preview">${esc(shareMessage(p))}</pre>
+        <div class="toolbar">
+          <button class="btn btn-primary" type="button" data-share-wa="${esc(p.id)}">Share on WhatsApp</button>
+          <button class="btn btn-ghost" type="button" data-copy-share="${esc(p.id)}">Copy text</button>
+        </div>
+      </div>
       <h2>Running ledger</h2>
       <p class="muted">Oldest first. Tap <strong>Edit</strong> on any existing line to change it. Save publishes the same books on every device.</p>
       ${rows.length ? `
@@ -619,39 +626,61 @@
     return Boolean(url) && url.startsWith("https://thanks2all.org/books.html#s/") && !url.includes("#s/~");
   }
 
-  function formatShareText(name, txns, sheet, url) {
-    const lines = [`${name} — our account`, ""];
-    const rows = (txns || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
-    if (!rows.length) lines.push("No transactions yet.");
-    else {
-      for (const t of rows) {
-        const side = t.direction === "in" ? "they gave" : "I gave";
-        const skip = t.include === false ? " (note only)" : "";
-        lines.push(`${t.date}  ${t.description}  ${money(t.amount, t.currency || "INR")}  ${side}${skip}`);
-      }
-    }
-    lines.push("");
+  function formatAmt(amount, currency) {
+    const n = Number(amount) || 0;
+    return `${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })} ${currency || "INR"}`;
+  }
+
+  function formatShareText(name, txns, sheet) {
+    const all = (txns || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const counted = all.filter((t) => t.include !== false);
+    const given = counted.filter((t) => t.direction !== "in");
+    const received = counted.filter((t) => t.direction === "in");
+    const lines = [`${name} — our account`, "", "I gave:"];
+    if (!given.length) lines.push("none");
+    else given.forEach((t) => lines.push(`${t.date}  ${t.description}  ${formatAmt(t.amount, t.currency)}`));
+    lines.push("", "They gave:");
+    if (!received.length) lines.push("none");
+    else received.forEach((t) => lines.push(`${t.date}  ${t.description}  ${formatAmt(t.amount, t.currency)}`));
+    lines.push("", "Balance:");
     const bals = sheet || [];
-    if (!bals.length) lines.push("Balance: settled");
+    if (!bals.length) lines.push("settled");
     else {
       for (const row of bals) {
         const n = Number(row.balance) || 0;
-        if (Math.abs(n) < 0.0001) lines.push(`${row.currency} balance: settled`);
-        else if (n > 0) lines.push(`${row.currency} balance: ${name} owes ${money(n, row.currency)}`);
-        else lines.push(`${row.currency} balance: I owe ${name} ${money(Math.abs(n), row.currency)}`);
+        if (Math.abs(n) < 0.0001) lines.push(`${row.currency}: settled`);
+        else if (n > 0) lines.push(`${row.currency}: ${name} owes ${formatAmt(n, row.currency)}`);
+        else lines.push(`${row.currency}: I owe ${name} ${formatAmt(Math.abs(n), row.currency)}`);
       }
     }
-    if (isShortShareUrl(url)) lines.push("", url);
     return lines.join("\n");
   }
 
-  function shareMessage(person, url) {
+  function shareMessage(person) {
     return formatShareText(
       person.name,
       state.data.txns.filter((t) => t.personId === person.id),
-      sheetFor(person.id),
-      url
+      sheetFor(person.id)
     );
+  }
+
+  function whatsAppHref(text) {
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }
+
+  function openWhatsAppNow(text) {
+    const href = whatsAppHref(text);
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => { window.location.href = href; });
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   function ledgerRowsFromTxns(txns) {
@@ -673,7 +702,7 @@
   function paintShare(snap) {
     const rows = ledgerRowsFromTxns(snap.txns);
     const sheet = Array.isArray(snap.sheet) ? snap.sheet : [];
-    const waText = formatShareText(snap.name, snap.txns, snap.sheet, isShortShareUrl(sharePageUrl(snap.id || "")) ? sharePageUrl(snap.id) : "");
+    const waText = formatShareText(snap.name, snap.txns, snap.sheet);
     app.innerHTML = `
       <section class="page-head">
         <p class="eyebrow">Shared reference</p>
@@ -773,35 +802,24 @@
 
   async function shareOnWhatsApp(personId) {
     const person = personById(personId);
-    if (!person || !state.pin) return;
-    const popup = window.open("about:blank", "_blank");
-    if (!person.shareId) person.shareId = uid();
-    const snapshot = {
-      name: person.name,
-      notes: person.notes || "",
-      sheet: sheetFor(person.id),
-      txns: state.data.txns.filter((t) => t.personId === person.id).map((t) => ({
-        date: t.date,
-        description: t.description,
-        amount: t.amount,
-        currency: t.currency || "INR",
-        direction: t.direction,
-        include: t.include !== false,
-        remarks: t.remarks || ""
-      }))
-    };
-    let url = "";
+    if (!person) return;
+    const text = shareMessage(person);
+    openWhatsAppNow(text);
+    state.notice = "WhatsApp opened with only the transactions.";
+    render();
+  }
+
+  async function copyShareText(personId) {
+    const person = personById(personId);
+    if (!person) return;
+    const text = shareMessage(person);
     try {
-      await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
-      url = sharePageUrl(person.shareId);
-      person.shareLink = url;
+      await navigator.clipboard.writeText(text);
+      state.notice = "Copied. Paste it in WhatsApp.";
     } catch {
-      url = "";
-      person.shareLink = "";
+      window.prompt("Copy this text", text);
+      state.notice = "Copy the text, then paste it in WhatsApp.";
     }
-    await save("WhatsApp has the transactions between both of you.");
-    const href = `https://wa.me/?text=${encodeURIComponent(shareMessage(person, url))}`;
-    if (popup && !popup.closed) popup.location.href = href;
     render();
   }
 
@@ -1038,12 +1056,14 @@
     if (shareWa) {
       e.preventDefault();
       e.stopPropagation();
-      try {
-        await shareOnWhatsApp(shareWa.getAttribute("data-share-wa"));
-      } catch (err) {
-        state.notice = "Could not share: " + (err.message || "try again");
-        render();
-      }
+      await shareOnWhatsApp(shareWa.getAttribute("data-share-wa"));
+      return;
+    }
+    const copyShare = e.target.closest("[data-copy-share]");
+    if (copyShare) {
+      e.preventDefault();
+      e.stopPropagation();
+      await copyShareText(copyShare.getAttribute("data-copy-share"));
       return;
     }
     const lockNow = e.target.closest("[data-lock-now]");

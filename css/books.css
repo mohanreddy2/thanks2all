@@ -115,8 +115,17 @@ select {
   text-align: right;
 }
 .ledger-actions .muted { display: block; margin-bottom: 6px; font-size: 0.78rem; }
-.ledger.readonly tr { cursor: default; }
-.ledger.readonly tr:hover td { background: transparent; }
+.share-preview {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fffaf1;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font: 0.92rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 0 0 12px;
+}
+.share-box h2 { margin-bottom: 8px; }
 .num { text-align: right !important; font-weight: 800; white-space: nowrap; }
 .home-sheet { min-width: 520px; }
 .lock-bar { margin-left: auto; }
