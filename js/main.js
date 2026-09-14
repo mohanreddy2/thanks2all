@@ -1,7 +1,17 @@
 const nav = document.querySelector("[data-nav]");
 const toggle = document.querySelector("[data-menu]");
 if (toggle && nav) {
-  toggle.addEventListener("click", () => nav.classList.toggle("open"));
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.addEventListener("click", () => {
+    const open = nav.classList.toggle("open");
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.addEventListener("click", (event) => {
+    if (!nav.classList.contains("open")) return;
+    if (nav.contains(event.target) || toggle.contains(event.target)) return;
+    nav.classList.remove("open");
+    toggle.setAttribute("aria-expanded", "false");
+  });
 }
 
 const form = document.querySelector("[data-form]");

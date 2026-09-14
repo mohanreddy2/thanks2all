@@ -39,9 +39,36 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function findCol(header, tests) {
+  for (let t = 0; t < tests.length; t += 1) {
+    const index = header.findIndex(tests[t]);
+    if (index >= 0) return index;
+  }
+  return -1;
+}
+
+function extractUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const fromIframe = raw.match(/\bsrc=["']([^"']+)["']/i);
+  return (fromIframe && fromIframe[1]) || raw;
+}
+
+function safeHttpUrl(value) {
+  const raw = extractUrl(value);
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw, window.location.href);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") return parsed.href;
+  } catch (error) {
+    return "";
+  }
+  return "";
+}
+
 function renderEntries(entries, mount) {
   if (!entries.length) {
-    mount.innerHTML = "<p class=\"lead\">No diary notes yet. Add one in Google Sheets and refresh.</p>";
+    mount.innerHTML = "<p class=\"lead\">No diary notes yet. Add one in Google Forms and refresh.</p>";
     return;
   }
   mount.innerHTML = entries.map((entry) => `
@@ -54,39 +81,49 @@ function renderEntries(entries, mount) {
 }
 
 async function loadSeed() {
-  const response = await fetch("data/diary.json");
+  const response = await fetch("data/diary.json", { cache: "no-store" });
   if (!response.ok) return [];
   const data = await response.json();
   return Array.isArray(data) ? data : data.entries || [];
 }
 
 async function loadSheet(url) {
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) throw new Error("sheet");
-  const rows = parseCsv(await response.text());
+  const text = await response.text();
+  if (/^\s*<(!doctype|html)/i.test(text)) throw new Error("sheet-html");
+  const rows = parseCsv(text);
   if (rows.length < 2) return [];
   const header = rows[0].map((value) => value.trim().toLowerCase());
-  const dateIndex = header.findIndex((value) => value.includes("date"));
-  const titleIndex = header.findIndex((value) => value.includes("title") || value.includes("thank"));
-  const noteIndex = header.findIndex((value) => value.includes("note") || value.includes("message"));
+  const dateIndex = findCol(header, [
+    (value) => value === "date",
+    (value) => /^date\b/.test(value),
+    (value) => value.includes("timestamp")
+  ]);
+  const titleIndex = findCol(header, [
+    (value) => value === "title",
+    (value) => value.includes("title"),
+    (value) => value.includes("thank")
+  ]);
+  const noteIndex = findCol(header, [
+    (value) => value === "note",
+    (value) => value.includes("note"),
+    (value) => value.includes("message")
+  ]);
   return rows.slice(1).map((row) => ({
-    date: (row[dateIndex] || "").trim(),
-    title: (row[titleIndex] || "Daily note").trim(),
-    note: (row[noteIndex] || row.slice(1).join(" ")).trim()
-  })).filter((entry) => entry.note).reverse();
+    date: ((dateIndex >= 0 ? row[dateIndex] : "") || "").trim(),
+    title: ((titleIndex >= 0 ? row[titleIndex] : "") || "Daily note").trim() || "Daily note",
+    note: ((noteIndex >= 0 ? row[noteIndex] : "") || row.slice(1).join(" ")).trim()
+  })).filter((entry) => entry.note || entry.title !== "Daily note").reverse();
 }
 
 const FORMS_HOME = "https://docs.google.com/forms/u/0/?pli=1";
 const SHEETS_HOME = "https://docs.google.com/spreadsheets/u/0/?pli=1";
 
-function cleanUrl(value) {
-  return String(value || "").trim();
-}
-
 function sheetEmbedUrl(config) {
-  const embed = cleanUrl(config.sheetEmbed);
+  const embed = safeHttpUrl(config.sheetEmbed);
   if (embed) return embed;
-  const csv = cleanUrl(config.sheetCsv);
+  const csv = safeHttpUrl(config.sheetCsv);
   const published = csv.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/([^/?]+)\/pub/i);
   if (published) {
     return `https://docs.google.com/spreadsheets/d/e/${published[1]}/pubhtml?widget=true&headers=false`;
@@ -95,13 +132,13 @@ function sheetEmbedUrl(config) {
 }
 
 function formShareUrl(config) {
-  return cleanUrl(config.formShare) || FORMS_HOME;
+  return safeHttpUrl(config.formShare) || FORMS_HOME;
 }
 
 function sheetShareUrl(config) {
-  const share = cleanUrl(config.sheetShare);
+  const share = safeHttpUrl(config.sheetShare);
   if (share) return share;
-  const embed = cleanUrl(config.sheetEmbed);
+  const embed = safeHttpUrl(config.sheetEmbed);
   if (embed && !/\/pubhtml/i.test(embed)) return embed;
   return SHEETS_HOME;
 }
@@ -113,8 +150,12 @@ function shareMessage(kind, url) {
 
 function openWhatsApp(text) {
   const href = `https://wa.me/?text=${encodeURIComponent(text)}`;
-  if (navigator.share) {
-    navigator.share({ text }).catch(() => { window.location.href = href; });
+  const mobile = /Mobi|Android|iPhone/i.test(navigator.userAgent || "");
+  if (mobile && navigator.share) {
+    navigator.share({ text }).catch((error) => {
+      if (error && error.name === "AbortError") return;
+      window.location.href = href;
+    });
     return;
   }
   const link = document.createElement("a");
@@ -172,8 +213,9 @@ function wireShare(config) {
   } catch (error) {
     config = window.THANKS_DIARY || {};
   }
-  if (formFrame && config.formEmbed) {
-    formFrame.src = config.formEmbed;
+  const formEmbed = safeHttpUrl(config.formEmbed);
+  if (formFrame && formEmbed) {
+    formFrame.src = formEmbed;
     formFrame.hidden = false;
   }
   const embed = sheetEmbedUrl(config);
@@ -183,11 +225,11 @@ function wireShare(config) {
   }
   wireShare(config);
   try {
-    const entries = config.sheetCsv ? await loadSheet(config.sheetCsv) : await loadSeed();
+    const csvUrl = safeHttpUrl(config.sheetCsv);
+    const entries = csvUrl ? await loadSheet(csvUrl) : await loadSeed();
     renderEntries(entries, mount);
   } catch (error) {
     const entries = await loadSeed();
     renderEntries(entries, mount);
   }
 })();
-

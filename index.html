@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito+Sans:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=diary-fix1">
 </head>
 <body>
   <header class="site-header">
@@ -18,9 +18,9 @@
         <img class="logo-mark" src="favicon.svg" alt="">
         <span class="logo-word">thanks2all</span>
       </a>
-      <button class="menu-btn" type="button" data-menu aria-label="Open menu">☰</button>
+      <button class="menu-btn" type="button" data-menu aria-label="Open menu" aria-expanded="false">☰</button>
       <nav class="nav" data-nav>
-        <a class="active" href="index.html">My journey</a>
+        <a class="active" href="index.html" aria-current="page">My journey</a>
         <a href="diary.html">Diary</a>
         <a href="path.html">Path</a>
         <a href="contact.html">Write to me</a>
@@ -99,7 +99,7 @@
       </p>
     </div>
   </footer>
-  <script src="js/main.js"></script>
+  <script src="js/main.js?v=diary-fix1"></script>
   <script src="js/apply-content.js"></script>
 </body>
 </html>

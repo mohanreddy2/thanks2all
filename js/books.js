@@ -670,8 +670,12 @@
 
   function openWhatsAppNow(text) {
     const href = whatsAppHref(text);
-    if (navigator.share) {
-      navigator.share({ text }).catch(() => { window.location.href = href; });
+    const mobile = /Mobi|Android|iPhone/i.test(navigator.userAgent || "");
+    if (mobile && navigator.share) {
+      navigator.share({ text }).catch((error) => {
+        if (error && error.name === "AbortError") return;
+        window.location.href = href;
+      });
       return;
     }
     const a = document.createElement("a");

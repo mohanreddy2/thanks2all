@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito+Sans:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=sheet-share1">
+  <link rel="stylesheet" href="css/styles.css?v=diary-fix1">
 </head>
 <body>
   <header class="site-header">
@@ -18,10 +18,10 @@
         <img class="logo-mark" src="favicon.svg" alt="">
         <span class="logo-word">thanks2all</span>
       </a>
-      <button class="menu-btn" type="button" data-menu aria-label="Open menu">☰</button>
+      <button class="menu-btn" type="button" data-menu aria-label="Open menu" aria-expanded="false">☰</button>
       <nav class="nav" data-nav>
         <a href="index.html">My journey</a>
-        <a class="active" href="diary.html">Diary</a>
+        <a class="active" href="diary.html" aria-current="page">Diary</a>
         <a href="path.html">Path</a>
         <a href="contact.html">Write to me</a>
       </nav>
@@ -32,54 +32,68 @@
     <section class="page-head">
       <p class="eyebrow">Daily notes</p>
       <h1>A diary of thanks</h1>
-      <p class="lead">Write a note in Google Forms. See and share the same notes in Google Sheets. Both open with your Google account, the same way.</p>
+      <p class="lead">Write a note in Google Forms. Share the same notes from Google Sheets. Both open with your Google account, the same way.</p>
     </section>
 
-    <section class="section" style="padding-top: 20px;">
+    <section class="section diary-launch">
       <div class="grid-2 diary-tools">
-        <article class="card">
+        <article class="card diary-card">
+          <p class="eyebrow">Write</p>
           <h2>Google Forms</h2>
-          <p>Add a daily note — Date, Title, Note. Same as opening your Forms list.</p>
-          <div class="toolbar">
-            <a class="btn btn-primary" href="https://docs.google.com/forms/u/0/?pli=1" target="_blank" rel="noopener">Open Forms</a>
-            <a class="btn btn-ghost" href="https://forms.google.com/create" target="_blank" rel="noopener">New form</a>
+          <p>Add Date, Title, and Note. Opens your Forms list, same as Google’s own page.</p>
+          <div class="diary-actions">
+            <div class="toolbar">
+              <a class="btn btn-primary" href="https://docs.google.com/forms/u/0/?pli=1" target="_blank" rel="noopener noreferrer">Open Forms</a>
+              <a class="btn btn-ghost" href="https://forms.google.com/create" target="_blank" rel="noopener noreferrer">New form</a>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn-ghost" type="button" data-share-form-wa>WhatsApp</button>
+              <button class="btn btn-ghost" type="button" data-copy-form>Copy link</button>
+            </div>
+            <p class="share-label">WhatsApp will send</p>
+            <p class="share-preview" data-form-preview>thanks2all diary — Google Forms
+https://docs.google.com/forms/u/0/?pli=1</p>
           </div>
-          <div class="toolbar" data-form-share>
-            <button class="btn btn-ghost" type="button" data-share-form-wa>Share form on WhatsApp</button>
-            <button class="btn btn-ghost" type="button" data-copy-form>Copy form link</button>
-          </div>
-          <p class="share-preview" data-form-preview></p>
         </article>
-        <article class="card">
+        <article class="card diary-card">
+          <p class="eyebrow">Share</p>
           <h2>Google Sheets</h2>
-          <p>Every form response lands in a Sheet. Open it, then share the Sheet the same way you share a Form.</p>
-          <div class="toolbar">
-            <a class="btn btn-primary" href="https://docs.google.com/spreadsheets/u/0/?pli=1" target="_blank" rel="noopener">Open Sheets</a>
-            <a class="btn btn-ghost" href="https://sheets.new" target="_blank" rel="noopener">New sheet</a>
+          <p>Every form response lands here. Open the sheet, then share it the same way you share a form.</p>
+          <div class="diary-actions">
+            <div class="toolbar">
+              <a class="btn btn-primary" href="https://docs.google.com/spreadsheets/u/0/?pli=1" target="_blank" rel="noopener noreferrer">Open Sheets</a>
+              <a class="btn btn-ghost" href="https://sheets.new" target="_blank" rel="noopener noreferrer">New sheet</a>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn-ghost" type="button" data-share-sheet-wa>WhatsApp</button>
+              <button class="btn btn-ghost" type="button" data-copy-sheet>Copy link</button>
+            </div>
+            <p class="share-label">WhatsApp will send</p>
+            <p class="share-preview" data-sheet-preview>thanks2all diary — Google Sheets
+https://docs.google.com/spreadsheets/u/0/?pli=1</p>
           </div>
-          <div class="toolbar" data-sheet-share>
-            <button class="btn btn-ghost" type="button" data-share-sheet-wa>Share sheet on WhatsApp</button>
-            <button class="btn btn-ghost" type="button" data-copy-sheet>Copy sheet link</button>
-          </div>
-          <p class="share-preview" data-sheet-preview></p>
         </article>
       </div>
-      <iframe data-form-embed hidden title="Daily thanks form" class="google-embed"></iframe>
-      <iframe data-sheet-embed hidden title="Diary Google Sheet" class="google-embed"></iframe>
-      <div class="howto" style="margin-top: 28px;">
-        <h2>Connect Form and Sheet once</h2>
+      <iframe data-form-embed hidden title="Daily thanks form" class="google-embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <iframe data-sheet-embed hidden title="Diary Google Sheet" class="google-embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <details class="howto">
+        <summary>How to connect Form and Sheet once</summary>
         <ol>
-          <li>Open <a href="https://docs.google.com/forms/u/0/?pli=1" target="_blank" rel="noopener">Google Forms</a>. Create “thanks2all daily note” with Date, Title, and Note.</li>
+          <li>Open <a href="https://docs.google.com/forms/u/0/?pli=1" target="_blank" rel="noopener noreferrer">Google Forms</a>. Create “thanks2all daily note” with Date, Title, and Note.</li>
           <li>Responses → Link to Sheets. That creates the Google Sheet.</li>
-          <li>In the Sheet: Share → Anyone with the link → Viewer (or Editor if you want them to type). Copy the link.</li>
+          <li>In the Sheet: Share → Anyone with the link → Viewer (or Editor if they should type). Copy the link.</li>
           <li>Optional: File → Share → Publish to web → CSV, and Embed, so this page can show the table.</li>
           <li>Paste those links in the <a href="https://mohanreddy2.github.io/oraganic-admin/">admin</a> (Form embed / Form share / Sheet CSV / Sheet share / Sheet embed) and save.</li>
         </ol>
-      </div>
+      </details>
     </section>
 
-    <section class="section" style="padding-top: 8px;">
-      <div data-diary></div>
+    <section class="section diary-notes">
+      <p class="eyebrow">Written so far</p>
+      <h2>Notes</h2>
+      <div data-diary>
+        <p class="lead">Loading notes…</p>
+      </div>
     </section>
   </main>
 
@@ -92,8 +106,8 @@
       </p>
     </div>
   </footer>
-  <script src="js/main.js"></script>
-  <script src="js/diary-config.js?v=sheet-share1"></script>
-  <script src="js/diary.js?v=sheet-share1"></script>
+  <script src="js/main.js?v=diary-fix1"></script>
+  <script src="js/diary-config.js?v=diary-fix1"></script>
+  <script src="js/diary.js?v=diary-fix1"></script>
 </body>
 </html>
