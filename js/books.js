@@ -27,7 +27,9 @@
     saltB64: null,
     cloudClaimed: false,
     cloudReady: false,
-    cloudOk: false
+    cloudOk: false,
+    shareId: null,
+    shareSnap: null
   };
 
   function emptyData() {
@@ -222,6 +224,13 @@
 
   function parseHash() {
     const h = (location.hash || "#").slice(1);
+    if (h.startsWith("s/")) {
+      state.view = "share";
+      state.shareId = h.slice(2);
+      state.personId = null;
+      state.txnId = null;
+      return;
+    }
     if (h.startsWith("p/")) {
       state.view = "person";
       state.personId = h.slice(2);
@@ -447,7 +456,9 @@
         ${noticeHtml()}
         <div class="toolbar">
           <a class="btn btn-ghost" href="#person-edit/${esc(p.id)}">Edit person</a>
+          <button class="btn btn-primary" type="button" data-share-wa="${esc(p.id)}">Share on WhatsApp</button>
         </div>
+        ${p.shareId ? `<p class="muted">Same page for both of you: <a href="${esc(sharePageUrl(p.shareId))}">${esc(sharePageUrl(p.shareId))}</a></p>` : ""}
       </section>
       ${sheetCards(p.id)}
       <h2>Running ledger</h2>
@@ -589,12 +600,174 @@
       </div>`;
   }
 
+  function sharePageUrl(shareId) {
+    return `https://thanks2all.org/books.html#s/${shareId}`;
+  }
+
+  function shareMessage(person, url) {
+    const lines = [`${person.name} — our account (reference)`, ""];
+    const sheet = sheetFor(person.id);
+    if (!sheet.length) lines.push("Settled — no counted credits yet.");
+    else {
+      for (const row of sheet) {
+        if (Math.abs(row.balance) < 0.0001) lines.push(`${row.currency}: settled`);
+        else if (row.balance > 0) lines.push(`${row.currency}: ${person.name} owes ${money(row.balance, row.currency)}`);
+        else lines.push(`${row.currency}: I owe ${person.name} ${money(Math.abs(row.balance), row.currency)}`);
+      }
+    }
+    lines.push("", "Same page for both of us:", url);
+    return lines.join("\n");
+  }
+
+  function ledgerRowsFromTxns(txns) {
+    const rows = (txns || []).slice().sort((a, b) => {
+      const d = String(a.date).localeCompare(String(b.date));
+      return d !== 0 ? d : String(a.description || "").localeCompare(String(b.description || ""));
+    });
+    const run = {};
+    return rows.map((t) => {
+      const cur = t.currency || "INR";
+      if (t.include !== false) {
+        const signed = t.direction === "in" ? -Number(t.amount) : Number(t.amount);
+        run[cur] = (run[cur] || 0) + signed;
+      }
+      return { ...t, running: run[cur] || 0 };
+    });
+  }
+
+  function paintShare(snap) {
+    const rows = ledgerRowsFromTxns(snap.txns);
+    const sheet = Array.isArray(snap.sheet) ? snap.sheet : [];
+    const waText = `${snap.name} — our account (reference)\n\nSame page for both of us:\n${sharePageUrl(snap.id)}`;
+    app.innerHTML = `
+      <section class="page-head">
+        <p class="eyebrow">Shared reference</p>
+        <h1>${esc(snap.name)}</h1>
+        <p class="lead">Same balance sheet for both of us. This page is a snapshot — it does not need a PIN.</p>
+        ${snap.notes ? `<p class="muted">${esc(snap.notes)}</p>` : ""}
+        ${snap.updated_at ? `<p class="muted">Updated ${esc(String(snap.updated_at).slice(0, 16).replace("T", " "))} UTC</p>` : ""}
+        <div class="toolbar">
+          <a class="btn btn-primary" href="https://wa.me/?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener">Share this page on WhatsApp</a>
+        </div>
+      </section>
+      ${sheet.length ? `<div class="books-stats">${sheet.map((row) => {
+        const bal = Number(row.balance) || 0;
+        return `<div class="sheet-card">
+          <h3>${esc(row.currency)}</h3>
+          <div class="sheet-line"><span>I gave</span><strong class="bal-out">${esc(money(row.given, row.currency))}</strong></div>
+          <div class="sheet-line"><span>They gave</span><strong class="bal-in">${esc(money(row.received, row.currency))}</strong></div>
+          <div class="sheet-line"><span>Balance</span><strong class="${bal > 0 ? "bal-out" : bal < 0 ? "bal-in" : "bal-zero"}">${
+            Math.abs(bal) < 0.0001
+              ? "Settled"
+              : `${esc(money(Math.abs(bal), row.currency))} ${bal > 0 ? "they owe me" : "I owe them"}`
+          }</strong></div>
+        </div>`;
+      }).join("")}</div>` : `<div class="sheet-card"><span class="bal bal-zero">Settled — no counted credits yet</span></div>`}
+      <h2>Running ledger</h2>
+      ${rows.length ? `
+      <div class="ledger-wrap">
+        <table class="ledger readonly">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Particulars</th>
+              <th class="num">I gave</th>
+              <th class="num">They gave</th>
+              <th class="num">Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((t) => {
+              const gave = t.direction === "out" ? money(t.amount, t.currency) : "—";
+              const got = t.direction === "in" ? money(t.amount, t.currency) : "—";
+              const skip = t.include === false ? " · note only" : "";
+              return `<tr>
+                <td>${esc(t.date)}</td>
+                <td>${esc(t.description)}${t.remarks ? `<div class="muted">${esc(t.remarks)}</div>` : ""}</td>
+                <td class="num bal-out">${esc(gave)}</td>
+                <td class="num bal-in">${esc(got)}</td>
+                <td class="num">${t.include === false ? "—" : esc(money(t.running, t.currency))}</td>
+                <td class="muted">${esc(t.currency || "INR")}${skip}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>` : `<p class="muted">No ledger lines on this shared sheet.</p>`}`;
+  }
+
+  function renderShare() {
+    const id = state.shareId;
+    if (!id) {
+      app.innerHTML = `<section class="page-head"><h1>Missing share</h1><p><a class="back" href="books.html">Back to books</a></p></section>`;
+      return;
+    }
+    if (state.shareSnap && state.shareSnap.id === id) {
+      paintShare(state.shareSnap);
+      return;
+    }
+    app.innerHTML = `
+      <section class="page-head books-lock">
+        <p class="eyebrow">Shared reference</p>
+        <h1>Opening the balance sheet</h1>
+        <p class="lead">Loading the same page for both of you…</p>
+      </section>`;
+    khata(`share/${id}`).then((snap) => {
+      state.shareSnap = snap;
+      if (state.view === "share" && state.shareId === id) paintShare(snap);
+    }).catch((err) => {
+      if (state.view !== "share") return;
+      app.innerHTML = `
+        <section class="page-head">
+          <h1>Sheet not found</h1>
+          <p class="lead">${esc(err.message || "Ask them to tap Share on WhatsApp again.")}</p>
+        </section>`;
+    });
+  }
+
+  async function shareOnWhatsApp(personId) {
+    const person = personById(personId);
+    if (!person || !state.pin) return;
+    const popup = window.open("about:blank", "_blank");
+    try {
+      if (!person.shareId) person.shareId = uid();
+      const snapshot = {
+        name: person.name,
+        notes: person.notes || "",
+        sheet: sheetFor(person.id),
+        txns: state.data.txns.filter((t) => t.personId === person.id).map((t) => ({
+          date: t.date,
+          description: t.description,
+          amount: t.amount,
+          currency: t.currency || "INR",
+          direction: t.direction,
+          include: t.include !== false,
+          remarks: t.remarks || ""
+        }))
+      };
+      await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
+      const url = sharePageUrl(person.shareId);
+      await save("Shared. Both of you can open the same page.");
+      const href = `https://wa.me/?text=${encodeURIComponent(shareMessage(person, url))}`;
+      if (popup) popup.location.href = href;
+      else location.href = href;
+      render();
+    } catch (err) {
+      if (popup) popup.close();
+      throw err;
+    }
+  }
+
   function render() {
+    parseHash();
+    if (state.view === "share") {
+      renderShare();
+      return;
+    }
     if (!state.key) {
       renderLock();
       return;
     }
-    parseHash();
     if (state.view === "person") renderPerson();
     else if (state.view === "new") renderNew();
     else if (state.view === "edit") renderEdit();
@@ -689,6 +862,12 @@
   }
 
   async function boot() {
+    parseHash();
+    if (state.view === "share") {
+      state.cloudReady = true;
+      renderShare();
+      return;
+    }
     renderLock();
     const slow = setTimeout(() => {
       if (!state.cloudReady) {
@@ -808,6 +987,18 @@
   });
 
   app.addEventListener("click", async (e) => {
+    const shareWa = e.target.closest("[data-share-wa]");
+    if (shareWa) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await shareOnWhatsApp(shareWa.getAttribute("data-share-wa"));
+      } catch (err) {
+        state.notice = "Could not share: " + (err.message || "try again");
+        render();
+      }
+      return;
+    }
     const lockNow = e.target.closest("[data-lock-now]");
     if (lockNow) {
       state.key = null;
@@ -884,10 +1075,13 @@
   });
 
   window.addEventListener("hashchange", () => {
-    if (state.key) {
-      state.error = "";
+    state.error = "";
+    if ((location.hash || "").startsWith("#s/")) {
+      state.shareSnap = null;
       render();
+      return;
     }
+    if (state.key) render();
   });
 
   boot();

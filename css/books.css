@@ -115,10 +115,8 @@ select {
   text-align: right;
 }
 .ledger-actions .muted { display: block; margin-bottom: 6px; font-size: 0.78rem; }
-.btn-edit {
-  padding: 6px 12px;
-  font-size: 0.82rem;
-}
+.ledger.readonly tr { cursor: default; }
+.ledger.readonly tr:hover td { background: transparent; }
 .num { text-align: right !important; font-weight: 800; white-space: nowrap; }
 .home-sheet { min-width: 520px; }
 .lock-bar { margin-left: auto; }
