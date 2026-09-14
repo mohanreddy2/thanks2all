@@ -1,0 +1,15 @@
+{
+  "name": "Thanks2All Books",
+  "short_name": "Books",
+  "start_url": "/books.html",
+  "display": "standalone",
+  "background_color": "#f6efe2",
+  "theme_color": "#3d4f3a",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

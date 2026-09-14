@@ -1,0 +1,82 @@
+.books-main { padding-bottom: 48px; min-height: 70vh; }
+.books-lock {
+  max-width: 28rem;
+  margin: 48px auto 24px;
+}
+.books-lock h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin: 8px 0 12px; }
+.books-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 20px 0 28px;
+}
+.books-stat {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+}
+.books-stat strong { display: block; font-family: "Fraunces", serif; font-size: 1.25rem; }
+.books-stat span { color: var(--muted); font-size: 0.86rem; font-weight: 700; }
+.people-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.person-card, .txn-row, .books-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.person-card {
+  display: block;
+  padding: 20px 22px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.person-card h2 { margin: 0 0 8px; font-size: 1.35rem; }
+.bal { font-weight: 800; font-size: 0.95rem; }
+.bal-out { color: var(--clay); }
+.bal-in { color: var(--sage); }
+.bal-zero { color: var(--muted); }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 22px; }
+.txn-row {
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.txn-row time { color: var(--clay); font-weight: 800; font-size: 0.8rem; }
+.txn-amt { font-weight: 800; white-space: nowrap; }
+.txn-meta { color: var(--muted); font-size: 0.88rem; grid-column: 1 / -1; }
+.muted { color: var(--muted); }
+.books-panel { padding: 22px; margin: 18px 0 28px; }
+.books-panel h2 { margin-top: 0; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font: inherit;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.check input { width: auto; }
+.danger { background: #fff; color: #8a2f1d; border: 1px solid var(--line); }
+.warn { color: #8a2f1d; font-size: 0.9rem; }
+.back { font-weight: 800; color: var(--sage); }
+@media (max-width: 640px) {
+  .row-2 { grid-template-columns: 1fr; }
+}
