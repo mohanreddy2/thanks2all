@@ -1,4 +1,7 @@
 window.THANKS_DIARY = {
   sheetCsv: "",
-  formEmbed: ""
+  sheetShare: "",
+  sheetEmbed: "",
+  formEmbed: "",
+  formShare: ""
 };

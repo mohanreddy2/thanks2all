@@ -76,9 +76,94 @@ async function loadSheet(url) {
   })).filter((entry) => entry.note).reverse();
 }
 
+const FORMS_HOME = "https://docs.google.com/forms/u/0/?pli=1";
+const SHEETS_HOME = "https://docs.google.com/spreadsheets/u/0/?pli=1";
+
+function cleanUrl(value) {
+  return String(value || "").trim();
+}
+
+function sheetEmbedUrl(config) {
+  const embed = cleanUrl(config.sheetEmbed);
+  if (embed) return embed;
+  const csv = cleanUrl(config.sheetCsv);
+  const published = csv.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/([^/?]+)\/pub/i);
+  if (published) {
+    return `https://docs.google.com/spreadsheets/d/e/${published[1]}/pubhtml?widget=true&headers=false`;
+  }
+  return "";
+}
+
+function formShareUrl(config) {
+  return cleanUrl(config.formShare) || FORMS_HOME;
+}
+
+function sheetShareUrl(config) {
+  const share = cleanUrl(config.sheetShare);
+  if (share) return share;
+  const embed = cleanUrl(config.sheetEmbed);
+  if (embed && !/\/pubhtml/i.test(embed)) return embed;
+  return SHEETS_HOME;
+}
+
+function shareMessage(kind, url) {
+  if (kind === "form") return `thanks2all diary — Google Forms\n${url}`;
+  return `thanks2all diary — Google Sheets\n${url}`;
+}
+
+function openWhatsApp(text) {
+  const href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  if (navigator.share) {
+    navigator.share({ text }).catch(() => { window.location.href = href; });
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = href;
+  link.target = "_blank";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+async function copyLink(url, button) {
+  const label = button ? button.textContent : "";
+  try {
+    await navigator.clipboard.writeText(url);
+    if (button) {
+      button.textContent = "Copied";
+      setTimeout(() => { button.textContent = label; }, 1600);
+    }
+  } catch (error) {
+    window.prompt("Copy this link", url);
+  }
+}
+
+function wireShare(config) {
+  const formUrl = formShareUrl(config);
+  const sheetUrl = sheetShareUrl(config);
+  const formPreview = document.querySelector("[data-form-preview]");
+  const sheetPreview = document.querySelector("[data-sheet-preview]");
+  if (formPreview) formPreview.textContent = shareMessage("form", formUrl);
+  if (sheetPreview) sheetPreview.textContent = shareMessage("sheet", sheetUrl);
+  document.querySelector("[data-share-form-wa]")?.addEventListener("click", () => {
+    openWhatsApp(shareMessage("form", formUrl));
+  });
+  document.querySelector("[data-copy-form]")?.addEventListener("click", (event) => {
+    copyLink(formUrl, event.currentTarget);
+  });
+  document.querySelector("[data-share-sheet-wa]")?.addEventListener("click", () => {
+    openWhatsApp(shareMessage("sheet", sheetUrl));
+  });
+  document.querySelector("[data-copy-sheet]")?.addEventListener("click", (event) => {
+    copyLink(sheetUrl, event.currentTarget);
+  });
+}
+
 (async function startDiary() {
   const mount = document.querySelector("[data-diary]");
   const formFrame = document.querySelector("[data-form-embed]");
+  const sheetFrame = document.querySelector("[data-sheet-embed]");
   if (!mount) return;
   let config = window.THANKS_DIARY || {};
   try {
@@ -91,6 +176,12 @@ async function loadSheet(url) {
     formFrame.src = config.formEmbed;
     formFrame.hidden = false;
   }
+  const embed = sheetEmbedUrl(config);
+  if (sheetFrame && embed) {
+    sheetFrame.src = embed;
+    sheetFrame.hidden = false;
+  }
+  wireShare(config);
   try {
     const entries = config.sheetCsv ? await loadSheet(config.sheetCsv) : await loadSeed();
     renderEntries(entries, mount);
@@ -99,3 +190,4 @@ async function loadSheet(url) {
     renderEntries(entries, mount);
   }
 })();
+
