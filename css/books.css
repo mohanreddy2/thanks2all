@@ -19,7 +19,7 @@
 .books-stat strong { display: block; font-family: "Fraunces", serif; font-size: 1.25rem; }
 .books-stat span { color: var(--muted); font-size: 0.86rem; font-weight: 700; }
 .people-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.person-card, .txn-row, .books-panel {
+.person-card, .txn-row, .books-panel, .sheet-card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -59,6 +59,7 @@
 .books-panel { padding: 22px; margin: 18px 0 28px; }
 .books-panel h2 { margin-top: 0; }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 select {
   width: 100%;
   border: 1px solid var(--line);
@@ -77,6 +78,41 @@ select {
 .danger { background: #fff; color: #8a2f1d; border: 1px solid var(--line); }
 .warn { color: #8a2f1d; font-size: 0.9rem; }
 .back { font-weight: 800; color: var(--sage); }
+.notice {
+  background: #3d4f3a;
+  color: #eef4ea;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 700;
+  margin: 16px 0 0;
+}
+.sheet-card { padding: 16px 18px; }
+.sheet-card h3 { margin: 0 0 10px; font-size: 1.05rem; }
+.sheet-line { display: flex; justify-content: space-between; gap: 12px; font-size: 0.92rem; margin: 4px 0; }
+.ledger-wrap { overflow-x: auto; margin: 12px 0 28px; }
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.ledger th, .ledger td { padding: 10px 12px; text-align: left; font-size: 0.9rem; }
+.ledger th {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+.ledger td { border-top: 1px solid var(--line); }
+.ledger tr { cursor: pointer; }
+.ledger tr:hover td { background: #fffaf1; }
+.num { text-align: right !important; font-weight: 800; white-space: nowrap; }
+.home-sheet { min-width: 520px; }
+.lock-bar { margin-left: auto; }
 @media (max-width: 640px) {
-  .row-2 { grid-template-columns: 1fr; }
+  .row-2, .row-3 { grid-template-columns: 1fr; }
 }
