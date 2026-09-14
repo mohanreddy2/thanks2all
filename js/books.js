@@ -458,7 +458,7 @@
           <a class="btn btn-ghost" href="#person-edit/${esc(p.id)}">Edit person</a>
           <button class="btn btn-primary" type="button" data-share-wa="${esc(p.id)}">Share on WhatsApp</button>
         </div>
-        ${p.shareLink || p.shareId ? `<p class="muted">Same page for both of you: <a href="${esc(p.shareLink || sharePageUrl(p.shareId))}">${esc(p.shareLink || sharePageUrl(p.shareId))}</a></p>` : ""}
+        ${p.shareLink && isShortShareUrl(p.shareLink) ? `<p class="muted">Page: <a href="${esc(p.shareLink)}">${esc(p.shareLink)}</a></p>` : ""}
       </section>
       ${sheetCards(p.id)}
       <h2>Running ledger</h2>
@@ -615,19 +615,43 @@
     return `https://thanks2all.org/books.html#s/${shareId}`;
   }
 
-  function shareMessage(person, url) {
-    const lines = [`${person.name} — our account (reference)`, ""];
-    const sheet = sheetFor(person.id);
-    if (!sheet.length) lines.push("Settled — no counted credits yet.");
+  function isShortShareUrl(url) {
+    return Boolean(url) && url.startsWith("https://thanks2all.org/books.html#s/") && !url.includes("#s/~");
+  }
+
+  function formatShareText(name, txns, sheet, url) {
+    const lines = [`${name} — our account`, ""];
+    const rows = (txns || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    if (!rows.length) lines.push("No transactions yet.");
     else {
-      for (const row of sheet) {
-        if (Math.abs(row.balance) < 0.0001) lines.push(`${row.currency}: settled`);
-        else if (row.balance > 0) lines.push(`${row.currency}: ${person.name} owes ${money(row.balance, row.currency)}`);
-        else lines.push(`${row.currency}: I owe ${person.name} ${money(Math.abs(row.balance), row.currency)}`);
+      for (const t of rows) {
+        const side = t.direction === "in" ? "they gave" : "I gave";
+        const skip = t.include === false ? " (note only)" : "";
+        lines.push(`${t.date}  ${t.description}  ${money(t.amount, t.currency || "INR")}  ${side}${skip}`);
       }
     }
-    lines.push("", "Same page for both of us:", url);
+    lines.push("");
+    const bals = sheet || [];
+    if (!bals.length) lines.push("Balance: settled");
+    else {
+      for (const row of bals) {
+        const n = Number(row.balance) || 0;
+        if (Math.abs(n) < 0.0001) lines.push(`${row.currency} balance: settled`);
+        else if (n > 0) lines.push(`${row.currency} balance: ${name} owes ${money(n, row.currency)}`);
+        else lines.push(`${row.currency} balance: I owe ${name} ${money(Math.abs(n), row.currency)}`);
+      }
+    }
+    if (isShortShareUrl(url)) lines.push("", url);
     return lines.join("\n");
+  }
+
+  function shareMessage(person, url) {
+    return formatShareText(
+      person.name,
+      state.data.txns.filter((t) => t.personId === person.id),
+      sheetFor(person.id),
+      url
+    );
   }
 
   function ledgerRowsFromTxns(txns) {
@@ -649,7 +673,7 @@
   function paintShare(snap) {
     const rows = ledgerRowsFromTxns(snap.txns);
     const sheet = Array.isArray(snap.sheet) ? snap.sheet : [];
-    const waText = `${snap.name} — our account (reference)\n\nSame page for both of us:\n${sharePageUrl(snap.id)}`;
+    const waText = formatShareText(snap.name, snap.txns, snap.sheet, isShortShareUrl(sharePageUrl(snap.id || "")) ? sharePageUrl(snap.id) : "");
     app.innerHTML = `
       <section class="page-head">
         <p class="eyebrow">Shared reference</p>
@@ -766,20 +790,16 @@
         remarks: t.remarks || ""
       }))
     };
-    let shareId = person.shareId;
+    let url = "";
     try {
       await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
+      url = sharePageUrl(person.shareId);
+      person.shareLink = url;
     } catch {
-      shareId = encodeInlineShare({
-        name: snapshot.name,
-        notes: snapshot.notes,
-        sheet: snapshot.sheet,
-        txns: snapshot.txns
-      });
+      url = "";
+      person.shareLink = "";
     }
-    const url = sharePageUrl(shareId);
-    person.shareLink = url;
-    await save("Shared. Both of you can open the same page.");
+    await save("WhatsApp has the transactions between both of you.");
     const href = `https://wa.me/?text=${encodeURIComponent(shareMessage(person, url))}`;
     if (popup && !popup.closed) popup.location.href = href;
     render();
