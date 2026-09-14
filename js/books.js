@@ -602,14 +602,13 @@
 
   function encodeInlineShare(snapshot) {
     const json = JSON.stringify(snapshot);
-    const b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-    return `~${b64}`;
+    return `~${b64(enc.encode(json)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")}`;
   }
 
   function decodeInlineShare(token) {
-    const b64 = token.slice(1).replace(/-/g, "+").replace(/_/g, "/");
-    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
-    return JSON.parse(decodeURIComponent(escape(atob(b64 + pad))));
+    let raw = token.slice(1).replace(/-/g, "+").replace(/_/g, "/");
+    while (raw.length % 4) raw += "=";
+    return JSON.parse(dec.decode(unb64(raw)));
   }
 
   function sharePageUrl(shareId) {
@@ -752,39 +751,38 @@
     const person = personById(personId);
     if (!person || !state.pin) return;
     const popup = window.open("about:blank", "_blank");
+    if (!person.shareId) person.shareId = uid();
+    const snapshot = {
+      name: person.name,
+      notes: person.notes || "",
+      sheet: sheetFor(person.id),
+      txns: state.data.txns.filter((t) => t.personId === person.id).map((t) => ({
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        currency: t.currency || "INR",
+        direction: t.direction,
+        include: t.include !== false,
+        remarks: t.remarks || ""
+      }))
+    };
+    let shareId = person.shareId;
     try {
-      if (!person.shareId) person.shareId = uid();
-      const snapshot = {
-        name: person.name,
-        notes: person.notes || "",
-        sheet: sheetFor(person.id),
-        txns: state.data.txns.filter((t) => t.personId === person.id).map((t) => ({
-          date: t.date,
-          description: t.description,
-          amount: t.amount,
-          currency: t.currency || "INR",
-          direction: t.direction,
-          include: t.include !== false,
-          remarks: t.remarks || ""
-        }))
-      };
-      let shareId = person.shareId;
-      try {
-        await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
-      } catch {
-        shareId = encodeInlineShare({ name: snapshot.name, notes: snapshot.notes, sheet: snapshot.sheet, txns: snapshot.txns });
-      }
-      const url = sharePageUrl(shareId);
-      person.shareLink = url;
-      await save("Shared. Both of you can open the same page.");
-      const href = `https://wa.me/?text=${encodeURIComponent(shareMessage(person, url))}`;
-      if (popup) popup.location.href = href;
-      else location.href = href;
-      render();
-    } catch (err) {
-      if (popup) popup.close();
-      throw err;
+      await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
+    } catch {
+      shareId = encodeInlineShare({
+        name: snapshot.name,
+        notes: snapshot.notes,
+        sheet: snapshot.sheet,
+        txns: snapshot.txns
+      });
     }
+    const url = sharePageUrl(shareId);
+    person.shareLink = url;
+    await save("Shared. Both of you can open the same page.");
+    const href = `https://wa.me/?text=${encodeURIComponent(shareMessage(person, url))}`;
+    if (popup && !popup.closed) popup.location.href = href;
+    render();
   }
 
   function render() {
