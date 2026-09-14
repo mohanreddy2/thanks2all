@@ -397,7 +397,7 @@
     };
     return `
       <form class="books-panel" data-txn="${esc(txn ? txn.id : "")}">
-        <h2>${txn ? "Edit ledger line" : "Save a credit"}</h2>
+        <h2>${txn ? "Edit this transaction" : "Save a new credit"}</h2>
         <label>Person
           <select name="personId" required>
             ${state.data.people.map((p) => `<option value="${esc(p.id)}" ${p.id === t.personId ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
@@ -425,7 +425,7 @@
         <label class="check"><input name="include" type="checkbox" ${t.include !== false ? "checked" : ""}> Count on the balance sheet</label>
         <p class="form-note warn">${esc(state.error)}</p>
         <div class="toolbar">
-          <button class="btn btn-primary" type="submit">${txn ? "Save changes" : "Save to ledger"}</button>
+          <button class="btn btn-primary" type="submit">${txn ? "Update & publish" : "Save to ledger"}</button>
           ${txn ? `<button class="btn danger" type="button" data-delete-txn="${esc(txn.id)}">Delete</button>` : ""}
         </div>
       </form>`;
@@ -450,9 +450,8 @@
         </div>
       </section>
       ${sheetCards(p.id)}
-      ${txnForm(null, p.id)}
       <h2>Running ledger</h2>
-      <p class="muted">Oldest first. Balance after each line is for that currency only. Tap a line to edit.</p>
+      <p class="muted">Oldest first. Tap <strong>Edit</strong> on any existing line to change it. Save publishes the same books on every device.</p>
       ${rows.length ? `
       <div class="ledger-wrap">
         <table class="ledger">
@@ -477,12 +476,16 @@
                 <td class="num bal-out">${esc(gave)}</td>
                 <td class="num bal-in">${esc(got)}</td>
                 <td class="num">${t.include === false ? "—" : esc(money(t.running, t.currency))}</td>
-                <td class="muted">${esc(t.currency)}${skip}</td>
+                <td class="ledger-actions">
+                  <span class="muted">${esc(t.currency)}${skip}</span>
+                  <a class="btn btn-ghost btn-edit" href="#edit/${esc(t.id)}">Edit</a>
+                </td>
               </tr>`;
             }).join("")}
           </tbody>
         </table>
-      </div>` : `<p class="muted">No lines yet. Save a credit above. It will stay on this ledger.</p>`}`;
+      </div>` : `<p class="muted">No lines yet. Save a credit below. It will stay on this ledger.</p>`}
+      ${txnForm(null, p.id)}`;
   }
 
   function renderNew() {
@@ -508,7 +511,10 @@
     app.innerHTML = `
       <section class="page-head">
         <p><a class="back" href="#p/${esc(t.personId)}">← ${esc(personById(t.personId)?.name || "Person")}</a></p>
-        <h1>Edit ledger line</h1>
+        <p class="eyebrow">Existing credit</p>
+        <h1>Edit this transaction</h1>
+        <p class="lead">Change date, amount, currency, or particulars any time. Save publishes the same line on every device.</p>
+        ${noticeHtml()}
       </section>
       ${txnForm(t, t.personId)}`;
   }
@@ -761,7 +767,7 @@
       if (existingId) {
         const idx = state.data.txns.findIndex((t) => t.id === existingId);
         if (idx >= 0) state.data.txns[idx] = { ...state.data.txns[idx], ...fields };
-        await save("Ledger line updated. Balance sheet refreshed.");
+        await save("Existing transaction updated. Same books published online.");
       } else {
         state.data.txns.push({ id: uid(), ...fields });
         await save("Saved to ledger. The running balance is updated.");

@@ -110,6 +110,15 @@ select {
 .ledger td { border-top: 1px solid var(--line); }
 .ledger tr { cursor: pointer; }
 .ledger tr:hover td { background: #fffaf1; }
+.ledger-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.ledger-actions .muted { display: block; margin-bottom: 6px; font-size: 0.78rem; }
+.btn-edit {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
 .num { text-align: right !important; font-weight: 800; white-space: nowrap; }
 .home-sheet { min-width: 520px; }
 .lock-bar { margin-left: auto; }
