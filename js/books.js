@@ -458,7 +458,7 @@
           <a class="btn btn-ghost" href="#person-edit/${esc(p.id)}">Edit person</a>
           <button class="btn btn-primary" type="button" data-share-wa="${esc(p.id)}">Share on WhatsApp</button>
         </div>
-        ${p.shareId ? `<p class="muted">Same page for both of you: <a href="${esc(sharePageUrl(p.shareId))}">${esc(sharePageUrl(p.shareId))}</a></p>` : ""}
+        ${p.shareLink || p.shareId ? `<p class="muted">Same page for both of you: <a href="${esc(p.shareLink || sharePageUrl(p.shareId))}">${esc(p.shareLink || sharePageUrl(p.shareId))}</a></p>` : ""}
       </section>
       ${sheetCards(p.id)}
       <h2>Running ledger</h2>
@@ -600,6 +600,18 @@
       </div>`;
   }
 
+  function encodeInlineShare(snapshot) {
+    const json = JSON.stringify(snapshot);
+    const b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    return `~${b64}`;
+  }
+
+  function decodeInlineShare(token) {
+    const b64 = token.slice(1).replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 === 0 ? "" : "=".repeat(4 - (b64.length % 4));
+    return JSON.parse(decodeURIComponent(escape(atob(b64 + pad))));
+  }
+
   function sharePageUrl(shareId) {
     return `https://thanks2all.org/books.html#s/${shareId}`;
   }
@@ -702,6 +714,17 @@
       app.innerHTML = `<section class="page-head"><h1>Missing share</h1><p><a class="back" href="books.html">Back to books</a></p></section>`;
       return;
     }
+    if (id.startsWith("~")) {
+      try {
+        const snap = decodeInlineShare(id);
+        snap.id = id;
+        state.shareSnap = snap;
+        paintShare(snap);
+      } catch {
+        app.innerHTML = `<section class="page-head"><h1>Sheet not found</h1><p class="lead">This WhatsApp link is incomplete. Ask them to share again.</p></section>`;
+      }
+      return;
+    }
     if (state.shareSnap && state.shareSnap.id === id) {
       paintShare(state.shareSnap);
       return;
@@ -745,8 +768,14 @@
           remarks: t.remarks || ""
         }))
       };
-      await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
-      const url = sharePageUrl(person.shareId);
+      let shareId = person.shareId;
+      try {
+        await khata("share", { pin: state.pin, share_id: person.shareId, snapshot });
+      } catch {
+        shareId = encodeInlineShare({ name: snapshot.name, notes: snapshot.notes, sheet: snapshot.sheet, txns: snapshot.txns });
+      }
+      const url = sharePageUrl(shareId);
+      person.shareLink = url;
       await save("Shared. Both of you can open the same page.");
       const href = `https://wa.me/?text=${encodeURIComponent(shareMessage(person, url))}`;
       if (popup) popup.location.href = href;
