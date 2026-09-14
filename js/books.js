@@ -1,6 +1,7 @@
 (() => {
   const LS_SALT = "thanks2all-books-salt";
   const LS_VAULT = "thanks2all-books-vault";
+  const KHATA_API = "https://dailycart-api.onrender.com/api/khata";
   const enc = new TextEncoder();
   const dec = new TextDecoder();
   const CURRENCIES = ["INR", "SGD", "MYR"];
@@ -21,7 +22,12 @@
     personId: null,
     txnId: null,
     error: "",
-    notice: ""
+    notice: "",
+    pin: null,
+    saltB64: null,
+    cloudClaimed: false,
+    cloudReady: false,
+    cloudOk: false
   };
 
   function emptyData() {
@@ -84,8 +90,59 @@
 
   async function save(notice) {
     if (!state.key) return;
-    localStorage.setItem(LS_VAULT, await encryptData(state.data, state.key));
-    if (notice) state.notice = notice;
+    const blob = await encryptData(state.data, state.key);
+    const saltB64 = state.saltB64 || localStorage.getItem(LS_SALT);
+    localStorage.setItem(LS_SALT, saltB64);
+    localStorage.setItem(LS_VAULT, blob);
+    let cloudNote = "";
+    try {
+      if (!state.cloudClaimed) {
+        await khata("register", { pin: state.pin, salt: saltB64, vault: blob });
+        state.cloudClaimed = true;
+      } else {
+        await khata("save", { pin: state.pin, vault: blob });
+      }
+      state.cloudOk = true;
+      cloudNote = " Saved online for every device.";
+    } catch (err) {
+      if (/already exist/i.test(err.message)) {
+        try {
+          await khata("save", { pin: state.pin, vault: blob });
+          state.cloudClaimed = true;
+          state.cloudOk = true;
+          cloudNote = " Saved online for every device.";
+        } catch (err2) {
+          state.cloudOk = false;
+          cloudNote = " Saved on this device only — cloud: " + err2.message;
+        }
+      } else {
+        state.cloudOk = false;
+        cloudNote = " Saved on this device only — cloud: " + err.message;
+      }
+    }
+    if (notice) state.notice = notice + cloudNote;
+  }
+
+  async function khata(path, body) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 25000);
+    try {
+      const res = await fetch(`${KHATA_API}/${path}`, {
+        method: body ? "POST" : "GET",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl.signal
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = json.detail;
+        const msg = typeof detail === "string" ? detail : (json.error || res.statusText);
+        throw new Error(msg);
+      }
+      return json;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   function money(amount, currency) {
@@ -196,18 +253,27 @@
   }
 
   function hasVault() {
-    return Boolean(localStorage.getItem(LS_SALT) && localStorage.getItem(LS_VAULT));
+    return state.cloudClaimed || Boolean(localStorage.getItem(LS_SALT) && localStorage.getItem(LS_VAULT));
   }
 
   function renderLock() {
+    if (!state.cloudReady) {
+      app.innerHTML = `
+        <section class="page-head books-lock">
+          <p class="eyebrow">Private ledger</p>
+          <h1>Connecting to your books</h1>
+          <p class="lead">Opening the online vault so you can use the same PIN on any device…</p>
+        </section>`;
+      return;
+    }
     const setup = !hasVault();
     app.innerHTML = `
       <section class="page-head books-lock">
         <p class="eyebrow">Private ledger</p>
         <h1>${setup ? "Set a PIN for your books" : "Open your books"}</h1>
         <p class="lead">${setup
-          ? "Choose a PIN. After that, unlock anytime, add a person, record credit you gave or credit they gave you, and save. Each person keeps a running balance by currency."
-          : "Enter your PIN to add or edit the ledger. Everything already saved on this phone stays here."}</p>
+          ? "Choose a PIN. The ledger is saved online. Use this same PIN on your phone, laptop, or any browser."
+          : "Enter the same PIN on any device. Your running ledger is stored in the cloud."}</p>
         <form class="books-panel" data-lock>
           <label>${setup ? "New PIN (4 or more digits)" : "PIN"}
             <input name="pin" type="password" inputmode="numeric" autocomplete="off" required minlength="4">
@@ -238,7 +304,7 @@
       <section class="page-head">
         <p class="eyebrow">Private ledger</p>
         <h1>Accounts with me</h1>
-        <p class="lead">Unlock with your PIN. Add any person. Save each credit you gave them, and each credit they gave you. The balance sheet for that person stays for the future.</p>
+        <p class="lead">Unlock with your PIN from any device. Add a person, save credit you gave or credit they gave you. The balance sheet stays online.</p>
         ${noticeHtml()}
       </section>
       <div class="books-stats">
@@ -458,7 +524,7 @@
         <p><a class="back" href="#">← Books</a></p>
         <p class="eyebrow">This device</p>
         <h1>Backup & PIN</h1>
-        <p class="lead">The ledger is saved on this phone or computer when you tap Save. Download JSON if you will open it on another device.</p>
+        <p class="lead">Your ledger is saved online. Same PIN on phone, laptop, or any browser. Download JSON as an extra backup.</p>
         ${noticeHtml()}
       </section>
       <div class="books-panel">
@@ -478,7 +544,7 @@
       </form>
       <div class="books-panel">
         <h2>On your phone</h2>
-        <p>Browser menu → <strong>Add to Home Screen</strong>. Open with your PIN each time, then keep adding ledger lines.</p>
+        <p>Browser menu → <strong>Add to Home Screen</strong>. Open with your PIN from this phone or any other device on the internet.</p>
       </div>`;
   }
 
@@ -505,30 +571,93 @@
         return;
       }
       const salt = crypto.getRandomValues(new Uint8Array(16));
-      localStorage.setItem(LS_SALT, b64(salt));
+      const saltB64 = b64(salt);
+      state.saltB64 = saltB64;
+      state.pin = pin;
+      localStorage.setItem(LS_SALT, saltB64);
       state.key = await deriveKey(pin, salt);
       state.data = {
         version: 1,
         people: STARTER_PEOPLE.map((p) => ({ id: uid(), ...p })),
         txns: []
       };
-      await save("Books created. Add a person or save a credit — it stays on this device.");
+      const vault = await encryptData(state.data, state.key);
+      localStorage.setItem(LS_VAULT, vault);
+      try {
+        await khata("register", { pin, salt: saltB64, vault });
+        state.cloudClaimed = true;
+        state.cloudOk = true;
+        state.notice = "Books created online. Use this PIN on any device.";
+      } catch (err) {
+        if (/already exist/i.test(err.message)) {
+          state.error = "Cloud books already exist. Unlock with your PIN.";
+          state.cloudClaimed = true;
+          state.key = null;
+          state.pin = null;
+          renderLock();
+          return;
+        }
+        state.notice = "Created on this device. Cloud: " + err.message;
+      }
       location.hash = "";
       render();
       return;
     }
+
     try {
-      const salt = unb64(localStorage.getItem(LS_SALT));
-      const key = await deriveKey(pin, salt);
-      state.data = await decryptData(localStorage.getItem(LS_VAULT), key);
+      const remote = await khata("unlock", { pin });
+      state.saltB64 = remote.salt;
+      localStorage.setItem(LS_SALT, remote.salt);
+      localStorage.setItem(LS_VAULT, remote.vault);
+      state.key = await deriveKey(pin, unb64(remote.salt));
+      state.data = await decryptData(remote.vault, state.key);
       if (!Array.isArray(state.data.people)) state.data = emptyData();
-      state.key = key;
-      state.notice = "Unlocked. Save any new credit and the balance sheet updates.";
+      state.pin = pin;
+      state.cloudOk = true;
+      state.notice = "Unlocked from the cloud. Saves go to every device.";
       render();
-    } catch {
-      state.error = "Wrong PIN, or the saved books on this device cannot be read.";
-      renderLock();
+      return;
+    } catch (err) {
+      if (err.message === "Wrong PIN.") {
+        state.error = "Wrong PIN.";
+        renderLock();
+        return;
+      }
+      const localSalt = localStorage.getItem(LS_SALT);
+      const localVault = localStorage.getItem(LS_VAULT);
+      if (!localSalt || !localVault) {
+        state.error = err.message || "Could not reach the cloud vault.";
+        renderLock();
+        return;
+      }
+      try {
+        const key = await deriveKey(pin, unb64(localSalt));
+        state.data = await decryptData(localVault, key);
+        if (!Array.isArray(state.data.people)) state.data = emptyData();
+        state.key = key;
+        state.pin = pin;
+        state.saltB64 = localSalt;
+        state.notice = "Opened from this device. Cloud: " + err.message;
+        render();
+      } catch {
+        state.error = "Wrong PIN, or the saved books cannot be read.";
+        renderLock();
+      }
     }
+  }
+
+  async function boot() {
+    renderLock();
+    try {
+      const st = await khata("status");
+      state.cloudClaimed = Boolean(st.claimed);
+      state.cloudOk = true;
+    } catch {
+      state.cloudOk = false;
+      state.cloudClaimed = false;
+    }
+    state.cloudReady = true;
+    render();
   }
 
   function readTxnForm(form) {
@@ -596,17 +725,24 @@
       const oldPin = String(fd.get("old") || "");
       const newPin = String(fd.get("pin") || "");
       try {
-        const salt = unb64(localStorage.getItem(LS_SALT));
-        const check = await deriveKey(oldPin, salt);
+        const oldSalt = state.saltB64 || localStorage.getItem(LS_SALT);
+        const check = await deriveKey(oldPin, unb64(oldSalt));
         await decryptData(localStorage.getItem(LS_VAULT), check);
         const nextSalt = crypto.getRandomValues(new Uint8Array(16));
-        localStorage.setItem(LS_SALT, b64(nextSalt));
+        const nextB64 = b64(nextSalt);
+        state.saltB64 = nextB64;
+        localStorage.setItem(LS_SALT, nextB64);
         state.key = await deriveKey(newPin, nextSalt);
-        await save("PIN updated on this device.");
+        const vault = await encryptData(state.data, state.key);
+        localStorage.setItem(LS_VAULT, vault);
+        state.pin = newPin;
+        await khata("pin", { old_pin: oldPin, new_pin: newPin, salt: nextB64, vault });
+        state.cloudClaimed = true;
+        state.notice = "PIN updated online. Use the new PIN on every device.";
         state.error = "";
         render();
       } catch {
-        state.error = "Current PIN is wrong.";
+        state.error = "Current PIN is wrong, or cloud could not update.";
         render();
       }
     }
@@ -616,6 +752,7 @@
     const lockNow = e.target.closest("[data-lock-now]");
     if (lockNow) {
       state.key = null;
+      state.pin = null;
       state.notice = "";
       location.hash = "";
       render();
@@ -676,5 +813,5 @@
     }
   });
 
-  render();
+  boot();
 })();
