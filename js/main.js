@@ -37,7 +37,8 @@ if (form) {
         headers: { Accept: "application/json" },
         body: data
       });
-      if (response.ok) {
+      const result = await response.json();
+      if (response.ok && String(result.success) === "true") {
         note.textContent = "Message sent. Thank you.";
         note.classList.add("ok");
         form.reset();
