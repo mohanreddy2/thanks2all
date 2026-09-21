@@ -120,9 +120,13 @@ async function loadSheet(url) {
 const FORMS_HOME = "https://docs.google.com/forms/u/0/?pli=1";
 const SHEETS_HOME = "https://docs.google.com/spreadsheets/u/0/?pli=1";
 
+function canEmbedSheet(url) {
+  return /\/pubhtml/i.test(url) || /\/spreadsheets\/d\/e\/[^/]+\/pub/i.test(url);
+}
+
 function sheetEmbedUrl(config) {
   const embed = safeHttpUrl(config.sheetEmbed);
-  if (embed) return embed;
+  if (embed && canEmbedSheet(embed)) return embed;
   const csv = safeHttpUrl(config.sheetCsv);
   const published = csv.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/([^/?]+)\/pub/i);
   if (published) {
@@ -185,8 +189,12 @@ function wireShare(config) {
   const sheetUrl = sheetShareUrl(config);
   const formPreview = document.querySelector("[data-form-preview]");
   const sheetPreview = document.querySelector("[data-sheet-preview]");
+  const formOpen = document.querySelector("[data-form-open]");
+  const sheetOpen = document.querySelector("[data-sheet-open]");
   if (formPreview) formPreview.textContent = shareMessage("form", formUrl);
   if (sheetPreview) sheetPreview.textContent = shareMessage("sheet", sheetUrl);
+  if (formOpen) formOpen.setAttribute("href", formUrl);
+  if (sheetOpen) sheetOpen.setAttribute("href", sheetUrl);
   document.querySelector("[data-share-form-wa]")?.addEventListener("click", () => {
     openWhatsApp(shareMessage("form", formUrl));
   });
